@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>デイプランナー</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f0e8; color: #2c2416;
+      height: 100dvh; display: flex; flex-direction: column; font-size: 14px;
+      overflow: hidden;
+    }
+
+    /* Header */
+    header {
+      background: #ede8de; border-bottom: 1px solid #d8d0c4;
+      padding: 22px 28px; display: flex; align-items: center; gap: 20px; flex-shrink: 0;
+    }
+    header h1 { font-size: 22px; color: #e07020; font-weight: 600; }
+    .h-field { display: flex; align-items: center; gap: 8px; font-size: 15px; color: #8a7966; }
+    .h-field input {
+      background: #f5f0e8; border: 1px solid #c8bfb0; color: #2c2416;
+      padding: 6px 10px; border-radius: 6px; font-size: 15px;
+    }
+    input[type="date"] { width: 160px; }
+    input[type="time"] { width: 108px; }
+    .stat {
+      font-size: 15px; color: #8a7966;
+      background: #e8e0d4; padding: 6px 14px; border-radius: 6px; white-space: nowrap;
+    }
+    .stat span { color: #c45800; font-weight: 600; }
+
+    /* Layout */
+    .main { display: flex; flex: 1; overflow: hidden; }
+
+    /* Library */
+    .library {
+      width: 268px; background: #ede8de; border-right: 1px solid #d8d0c4;
+      display: flex; flex-direction: column; flex-shrink: 0;
+    }
+    .lib-top { padding: 10px 12px; border-bottom: 1px solid #d8d0c4; flex-shrink: 0; }
+    .lib-top h2 { font-size: 10px; color: #a09080; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+    .tmpl-row { display: flex; gap: 5px; }
+    .tmpl-row select {
+      flex: 1; background: #f5f0e8; border: 1px solid #c8bfb0; color: #2c2416;
+      padding: 4px 6px; border-radius: 6px; font-size: 12px; min-width: 0;
+    }
+
+    .lib-body { flex: 1; overflow-y: auto; padding: 8px 10px; }
+    .cat-label {
+      font-size: 10px; color: #a09080; text-transform: uppercase; letter-spacing: .07em;
+      margin: 10px 0 4px; padding-left: 6px; border-left: 2px solid #c8bfb0;
+      transition: color .15s;
+    }
+    .cat-label:first-child { margin-top: 2px; }
+    .cat-section.drag-target .cat-label { color: #e07020; border-left-color: #e07020; }
+    .cat-section.drag-target { background: #f5e8d8; border-radius: 6px; }
+    .lib-item {
+      display: flex; align-items: center; gap: 3px;
+      background: #f0ebe0; border-radius: 6px; margin-bottom: 3px; padding: 4px 6px;
+    }
+    .lib-add { flex: 1; background: none; border: none; color: #2c2416; cursor: pointer; text-align: left; font-size: 13px; display: flex; justify-content: space-between; min-width: 0; }
+    .lib-add:hover { color: #e07020; }
+    .lib-add .ln { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .lib-add .ld { font-size: 11px; color: #a09080; flex-shrink: 0; margin-left: 5px; }
+    .iBtn { background: none; border: none; cursor: pointer; color: #c0b4a4; font-size: 12px; padding: 2px 4px; border-radius: 3px; line-height: 1; flex-shrink: 0; }
+    .iBtn:hover { color: #2c2416; }
+    .iBtn.d:hover { color: #c0392b; }
+
+    .lib-bot { padding: 10px 12px; border-top: 1px solid #d8d0c4; flex-shrink: 0; }
+    .lib-bot h3 { font-size: 10px; color: #a09080; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; }
+    .cf { display: flex; flex-direction: column; gap: 5px; }
+    .cf input, .cf select {
+      background: #f5f0e8; border: 1px solid #c8bfb0; color: #2c2416;
+      padding: 5px 8px; border-radius: 6px; font-size: 12px; width: 100%;
+    }
+    .cf-row { display: flex; gap: 5px; }
+    .cf-row input { flex: 1; }
+    .cf-row select { flex: 1; }
+    #cDur, #cDurM { flex: 0 0 72px !important; }
+
+    /* Schedule */
+    .sched-area { flex: 1; overflow-y: auto; padding: 12px 16px; }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      text-align: left; padding: 6px 8px; font-size: 10px; color: #a09080;
+      border-bottom: 1px solid #d8d0c4; text-transform: uppercase; letter-spacing: .05em;
+    }
+    .srow { border-bottom: 1px solid #e0d8cc; }
+    .srow:hover { background: #ede8de; }
+    .srow.dragging { opacity: 0.35; }
+    .srow.drag-over { border-top: 2px solid #e07020; }
+    td { padding: 8px 8px; vertical-align: middle; }
+    .hnd { color: #c0b4a4; cursor: grab; user-select: none; font-size: 15px; }
+    .srow:hover .hnd { color: #a09080; }
+    .tc { color: #c45800; font-size: 16px; font-weight: 600; white-space: nowrap; width: 145px; }
+    .dc { width: 68px; }
+    .dur-in {
+      width: 58px; background: #f0ebe0; border: 1px solid #c8bfb0; color: #2c2416;
+      padding: 2px 5px; border-radius: 4px; font-size: 13px; text-align: center;
+    }
+    td:not(.cat-col):not(.dc) { font-size: 16px; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; background: #e0d8cc; color: #6e6050; white-space: nowrap; }
+    .cat-col { width: 1px; white-space: nowrap; padding-right: 4px !important; }
+    .dBtn { background: none; border: none; color: #c0b4a4; cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 4px; opacity: 0; transition: opacity .15s, color .15s; }
+    .srow:hover .dBtn { opacity: 1; }
+    .dBtn:hover { color: #c0392b; }
+    .lBtn { background: none; border: none; color: #c0b4a4; cursor: pointer; font-size: 14px; padding: 2px 5px; border-radius: 4px; opacity: 0; transition: opacity .15s, color .15s; }
+    .srow:hover .lBtn { opacity: 1; }
+    .lBtn:hover { color: #e07020; }
+    .empty { text-align: center; color: #c0b4a4; padding: 48px 0; font-size: 13px; }
+    .add-row td { padding: 5px 8px; }
+    .add-row input, .add-row select {
+      background: #f0ebe0; border: 1px solid #c8bfb0; color: #2c2416;
+      border-radius: 5px; font-size: 14px; padding: 4px 7px;
+    }
+    .add-row input[type="text"] { width: 100%; }
+    .add-row input[type="number"] { width: 58px; text-align: center; }
+    .add-row select { font-size: 13px; }
+    .memo-in { width: 100%; background: transparent; border: none; border-bottom: 1px solid #d8d0c4; color: #2c2416; font-size: 14px; padding: 2px 4px; border-radius: 0; outline: none; resize: none; overflow: hidden; font-family: inherit; line-height: 1.4; box-sizing: border-box; }
+    .memo-in:focus { border-bottom-color: #e07020; background: #f5f0e8; border-radius: 3px; }
+    .add-btn { background: #e07020; border: none; color: #fff; border-radius: 5px; cursor: pointer; font-size: 16px; padding: 3px 9px; font-weight: 600; transition: background .15s; }
+    .add-btn:hover { background: #c45800; }
+
+    /* Category manager */
+    .cat-mgr { margin-top: 8px; padding-top: 8px; border-top: 1px solid #d8d0c4; }
+    .cat-mgr .cf-row input { flex: 1; }
+    .cat-tags-wrap { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+    .cat-tag { display: inline-flex; align-items: center; gap: 3px; background: #e0d8cc; color: #6e6050; border-radius: 999px; font-size: 11px; padding: 2px 6px 2px 8px; }
+    .cat-tag button { background: none; border: none; cursor: pointer; color: #9e8e7e; font-size: 10px; padding: 0; line-height: 1; }
+    .cat-tag button:hover { color: #c0392b; }
+    .cat-tag-input { border: 1px solid #c8bfb0; border-radius: 10px; font-size: 11px; padding: 1px 6px; background: #fff; color: #2c2416; outline: none; width: 80px; }
+
+    /* Context Menu */
+    #ctxMenu { display:none; position:fixed; z-index:1000; background:#fff; border:1px solid #d8d0c4; border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.15); overflow:hidden; min-width:160px; }
+    #ctxMenu button { display:block; width:100%; padding:9px 16px; background:none; border:none; text-align:left; font-size:14px; color:#2c2416; cursor:pointer; }
+    #ctxMenu button:hover { background:#f5ede0; color:#e07020; }
+    #ctxMenu button:last-child { border-top:1px solid #e8e0d4; color:#c0392b; }
+    .name-edit-in { width:100%; background:#fff8f0; border:1px solid #e07020; border-radius:4px; font-size:16px; padding:2px 6px; color:#2c2416; outline:none; font-family:inherit; }
+
+    /* Footer */
+    footer {
+      padding: 10px 20px; background: #ede8de; border-top: 1px solid #d8d0c4;
+      display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0;
+    }
+    .btn { padding: 7px 15px; border-radius: 6px; border: none; cursor: pointer; font-size: 13px; font-weight: 500; transition: background .15s; }
+    .btn-p { background: #e07020; color: #ffffff; font-weight: 600; }
+    .btn-p:hover { background: #c45800; }
+    .btn-g { background: #e8e0d4; color: #2c2416; border: 1px solid #d8d0c4; }
+    .btn-g:hover { background: #d8d0c4; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* Dialog */
+    dialog {
+      background: #f5f0e8; border: 1px solid #d8d0c4; border-radius: 10px;
+      color: #2c2416; padding: 20px; min-width: 280px;
+    }
+    dialog::backdrop { background: rgba(0,0,0,.3); }
+    dialog h3 { font-size: 14px; margin-bottom: 14px; color: #e07020; }
+    dialog label { font-size: 12px; color: #8a7966; display: block; margin: 10px 0 4px; }
+    dialog label:first-of-type { margin-top: 0; }
+    dialog input, dialog select {
+      width: 100%; background: #ede8de; border: 1px solid #c8bfb0; color: #2c2416;
+      padding: 6px 10px; border-radius: 6px; font-size: 13px;
+    }
+    .dlg-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 56px; right: 20px;
+      background: #e07020; color: #ffffff;
+      padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 600;
+      opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 2000;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ── MOBILE TAB PANELS ─────────────────────────────────────── */
+    .bottom-nav {
+      display: none;
+      background: #ede8de; border-top: 1px solid #d8d0c4;
+      flex-shrink: 0;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .bottom-nav-inner { display: flex; }
+    .tab-btn {
+      flex: 1; background: none; border: none; cursor: pointer;
+      padding: 9px 4px 10px;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      color: #a09080; font-size: 10px; font-weight: 500; transition: color .15s;
+    }
+    .tab-btn .ti { font-size: 22px; line-height: 1; }
+    .tab-btn.active { color: #e07020; }
+    .tab-panel { display: none; flex: 1; flex-direction: column; overflow: hidden; }
+    .tab-panel.active { display: flex; }
+    .tab-panel-body { flex: 1; overflow-y: auto; padding: 10px 12px 0; }
+    .mob-footer {
+      padding: 8px 12px; background: #ede8de; border-top: 1px solid #d8d0c4;
+      display: flex; gap: 6px; flex-shrink: 0;
+    }
+    .mob-footer .btn { flex: 1; padding: 10px 6px; font-size: 12px; }
+    .mob-lib-body { flex: 1; }
+    .mob-section { margin-bottom: 14px; }
+    .mob-section-title { font-size: 10px; color: #a09080; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 7px; padding-bottom: 5px; border-bottom: 1px solid #d8d0c4; }
+
+    /* ── RESPONSIVE ──────────────────────────────────────────────── */
+    @media (min-width: 641px) {
+      .library   { display: flex; }
+      .sched-area { display: block; }
+      footer      { display: flex; }
+      .bottom-nav { display: none !important; }
+      .tab-panel  { display: none !important; }
+    }
+
+    @media (max-width: 640px) {
+      body { overflow: hidden; }
+      header { padding: 10px 14px; gap: 8px; }
+      header h1 { font-size: 17px; }
+      .h-field { font-size: 13px; }
+      .h-field input { font-size: 13px; padding: 4px 8px; }
+      input[type="date"] { width: 136px; }
+      input[type="time"] { width: 90px; }
+      .stat { font-size: 12px; padding: 4px 10px; }
+      .library   { display: none; }
+      .sched-area { display: none; }
+      footer      { display: none; }
+      .bottom-nav { display: block; }
+      /* モバイルスケジュールテーブル */
+      .srow .dBtn { opacity: 1; }
+      .srow .lBtn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>📅 デイプランナー</h1>
+  <div class="h-field">
+    <span>日付</span>
+    <input type="date" id="dateInput">
+  </div>
+  <div class="h-field">
+    <span>開始</span>
+    <input type="time" id="startTime" value="08:00" oninput="renderAll()">
+  </div>
+  <button class="btn btn-g" onclick="saveToHistory()" style="font-size:15px">保存</button>
+  <div class="stat" id="stat">終了 <span>--:--</span>（合計 <span>0h</span>）</div>
+</header>
+
+<div class="main">
+
+  <!-- ── DESKTOP: ライブラリ ───────────────────── -->
+  <div class="library">
+    <div class="lib-top">
+      <h2>履歴</h2>
+      <div class="tmpl-row">
+        <select id="historySel"></select>
+        <button class="btn btn-g btn-sm" onclick="loadFromHistory()">読込</button>
+        <button class="btn btn-g btn-sm" onclick="deleteFromHistory()" style="color:#c0392b">削除</button>
+      </div>
+    </div>
+    <div class="lib-top">
+      <h2>テンプレート</h2>
+      <div class="tmpl-row">
+        <select id="tmplSel"></select>
+        <button class="btn btn-g btn-sm" onclick="loadTmpl()">読込</button>
+      </div>
+    </div>
+
+    <div class="lib-body" id="libBody"></div>
+
+    <div class="lib-bot">
+      <h3>カスタム追加</h3>
+      <div class="cf">
+        <div class="cf-row">
+          <select id="cCat"></select>
+          <input type="number" id="cDur" placeholder="分" min="5" step="5">
+        </div>
+        <input type="text" id="cName" placeholder="活動名">
+        <button class="btn btn-g btn-sm" onclick="addCustom('cCat','cDur','cName')" style="width:100%">＋ 追加</button>
+      </div>
+      <div class="cat-mgr cf">
+        <input type="text" id="newCatName" placeholder="新しいカテゴリ名" onkeydown="if(event.key==='Enter')addCategory('newCatName')">
+        <button class="btn btn-g btn-sm" onclick="addCategory('newCatName')" style="width:100%">＋ カテゴリ追加</button>
+        <div class="cat-tags-wrap" id="customCatTags"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── DESKTOP: スケジュール ──────────────────── -->
+  <div class="sched-area">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:22px"></th>
+          <th>カテゴリ</th>
+          <th>所要(分)</th>
+          <th>時間</th>
+          <th>活動内容</th>
+          <th style="min-width:220px">メモ</th>
+          <th style="width:56px"></th>
+        </tr>
+      </thead>
+      <tbody id="schedBody"></tbody>
+      <tfoot>
+        <tr class="add-row">
+          <td></td>
+          <td class="cat-col">
+            <select id="newCat"></select>
+          </td>
+          <td class="cat-col">
+            <input type="number" id="newDur" placeholder="分" min="5" step="5">
+          </td>
+          <td></td>
+          <td><input type="text" id="newName" placeholder="活動名を入力して Enter" onkeydown="if(event.key==='Enter')addDirectRow()"></td>
+          <td><textarea id="newMemo" class="memo-in" placeholder="メモ" rows="1" oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea></td>
+          <td><button class="add-btn" onclick="addDirectRow()">＋</button></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- ── MOBILE: 今日タブ ───────────────────────── -->
+  <div class="tab-panel active" id="tab-today">
+    <div class="tab-panel-body">
+      <table>
+        <thead>
+          <tr>
+            <th>カテゴリ</th>
+            <th>所要(分)</th>
+            <th>時間</th>
+            <th>活動内容</th>
+            <th style="width:32px"></th>
+          </tr>
+        </thead>
+        <tbody id="schedBodyM"></tbody>
+      </table>
+    </div>
+    <div class="mob-footer">
+      <button class="btn btn-g" onclick="clearSched()">クリア</button>
+      <button class="btn btn-g" onclick="saveToHistory()">保存</button>
+      <button class="btn btn-g" onclick="copyMd()">MDコピー</button>
+      <button class="btn btn-p" onclick="sendToObsidian()">Obsidian</button>
+    </div>
+  </div>
+
+  <!-- ── MOBILE: ライブラリタブ ─────────────────── -->
+  <div class="tab-panel" id="tab-library">
+    <div class="tab-panel-body">
+      <div class="mob-section">
+        <div class="lib-body mob-lib-body" id="libBodyM" style="padding:0"></div>
+      </div>
+
+      <div class="mob-section">
+        <div class="mob-section-title">カスタム追加</div>
+        <div class="cf">
+          <div class="cf-row">
+            <select id="cCatM"></select>
+            <input type="number" id="cDurM" placeholder="分" min="5" step="5">
+          </div>
+          <input type="text" id="cNameM" placeholder="活動名">
+          <button class="btn btn-g btn-sm" onclick="addCustom('cCatM','cDurM','cNameM')" style="width:100%">＋ 追加</button>
+        </div>
+      </div>
+
+      <div class="mob-section">
+        <div class="mob-section-title">カテゴリ管理</div>
+        <div class="cf">
+          <input type="text" id="newCatNameM" placeholder="新しいカテゴリ名" onkeydown="if(event.key==='Enter')addCategory('newCatNameM')">
+          <button class="btn btn-g btn-sm" onclick="addCategory('newCatNameM')" style="width:100%">＋ カテゴリ追加</button>
+          <div class="cat-tags-wrap" id="customCatTagsM"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── MOBILE: 履歴タブ ───────────────────────── -->
+  <div class="tab-panel" id="tab-history">
+    <div class="tab-panel-body">
+      <div class="mob-section">
+        <div class="mob-section-title">履歴</div>
+        <div class="cf">
+          <select id="historySelM" style="width:100%"></select>
+          <div style="display:flex;gap:5px">
+            <button class="btn btn-g btn-sm" onclick="loadFromHistoryM()" style="flex:1">読込</button>
+            <button class="btn btn-g btn-sm" onclick="deleteFromHistoryM()" style="flex:1;color:#c0392b">削除</button>
+          </div>
+        </div>
+      </div>
+      <div class="mob-section">
+        <div class="mob-section-title">テンプレート</div>
+        <div class="cf">
+          <select id="tmplSelM" style="width:100%"></select>
+          <button class="btn btn-g btn-sm" onclick="loadTmplM()" style="width:100%">読込</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.main -->
+
+<!-- ── DESKTOP footer ────────────────────────── -->
+<footer>
+  <button class="btn btn-g" onclick="clearSched()">クリア</button>
+  <button class="btn btn-g" onclick="openSaveDlg()">テンプレートとして保存</button>
+  <button class="btn btn-g" onclick="copyMd()">Markdownをコピー</button>
+  <button class="btn btn-p" onclick="sendToObsidian()">Obsidianに送る</button>
+</footer>
+
+<!-- ── MOBILE bottom nav ─────────────────────── -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="tab-btn active" id="nav-today" onclick="switchTab('today')">
+      <span class="ti">📅</span><span>今日</span>
+    </button>
+    <button class="tab-btn" id="nav-library" onclick="switchTab('library')">
+      <span class="ti">📚</span><span>ライブラリ</span>
+    </button>
+    <button class="tab-btn" id="nav-history" onclick="switchTab('history')">
+      <span class="ti">🗂️</span><span>履歴</span>
+    </button>
+  </div>
+</div>
+
+<!-- Edit Library Dialog -->
+<dialog id="editDlg">
+  <h3>活動を編集</h3>
+  <label>名前</label><input type="text" id="eName">
+  <label>時間（分）</label><input type="number" id="eDur" min="5" step="5">
+  <label>カテゴリ</label>
+  <select id="eCat"></select>
+  <div class="dlg-foot">
+    <button class="btn btn-g btn-sm" onclick="editDlg.close()">キャンセル</button>
+    <button class="btn btn-p btn-sm" onclick="saveLibEdit()">保存</button>
+  </div>
+</dialog>
+
+<!-- Save Template Dialog -->
+<dialog id="saveDlg">
+  <h3>テンプレートとして保存</h3>
+  <label>テンプレート名</label>
+  <input type="text" id="tName" placeholder="例：制作集中日">
+  <div class="dlg-foot">
+    <button class="btn btn-g btn-sm" onclick="saveDlg.close()">キャンセル</button>
+    <button class="btn btn-p btn-sm" onclick="saveTmpl()">保存</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toastEl"></div>
+
+<div id="ctxMenu">
+  <button onclick="ctxEdit()">✎ 活動内容を編集</button>
+  <button onclick="ctxAddToLib()">＋ ライブラリに追加</button>
+  <button onclick="ctxDelete()">✕ 削除</button>
+</div>
+
+<script>
+// ── DEFAULT DATA ──────────────────────────────────────────────────────────────
+
+const DEFAULT_CATS = ['習慣','練習','制作','勉強','生活','余白','余暇'];
+
+const CAT_COLORS = {
+  '習慣': { bg:'#f5d5c0', color:'#8b4513' },
+  '練習': { bg:'#c8d8f5', color:'#2b4a8b' },
+  '制作': { bg:'#fce8a0', color:'#7a5800' },
+  '勉強': { bg:'#c8ecd8', color:'#1e6640' },
+  '生活': { bg:'#ddd8f0', color:'#4a3a8a' },
+  '余白': { bg:'#e8e8e8', color:'#606060' },
+  '余暇': { bg:'#c8eeee', color:'#1a6060' },
+};
+const PALETTE = [
+  { bg:'#f5c8e0', color:'#8b1a50' },
+  { bg:'#d8f0c8', color:'#2a6a10' },
+  { bg:'#f0d8c8', color:'#7a3010' },
+  { bg:'#d0e8f8', color:'#1a4a7a' },
+  { bg:'#f8e0d0', color:'#7a3820' },
+];
+const _catColorCache = {};
+function getCatColor(cat) {
+  if (CAT_COLORS[cat]) return CAT_COLORS[cat];
+  if (!_catColorCache[cat]) {
+    const idx = Object.keys(_catColorCache).length % PALETTE.length;
+    _catColorCache[cat] = PALETTE[idx];
+  }
+  return _catColorCache[cat];
+}
+
+const DEF_LIB = [
+  { id:1,  name:"朝の準備",            duration:30,  category:"習慣" },
+  { id:2,  name:"朝散歩・朝カフェ・読書", duration:120, category:"習慣" },
+  { id:3,  name:"運動",                duration:30,  category:"習慣" },
+  { id:4,  name:"読書",                duration:60,  category:"習慣" },
+  { id:5,  name:"アナトミー",           duration:60,  category:"練習" },
+  { id:6,  name:"デッサン",             duration:60,  category:"練習" },
+  { id:7,  name:"アイデアスケッチ",      duration:60,  category:"練習" },
+  { id:8,  name:"Astraia制作",         duration:150, category:"制作" },
+  { id:9,  name:"Blender勉強",         duration:90,  category:"勉強" },
+  { id:10, name:"UE勉強",              duration:90,  category:"勉強" },
+  { id:11, name:"AI勉強",              duration:90,  category:"勉強" },
+  { id:12, name:"昼ご飯・休憩",         duration:60,  category:"生活" },
+  { id:13, name:"夕ご飯",              duration:60,  category:"生活" },
+  { id:14, name:"風呂・就寝準備",       duration:60,  category:"生活" },
+  { id:15, name:"自由時間",             duration:60,  category:"余白" },
+  { id:16, name:"休憩",                duration:30,  category:"余白" },
+  { id:17, name:"外出・お出かけ",       duration:120, category:"余暇" },
+  { id:18, name:"川崎水族館",           duration:180, category:"余暇" },
+  { id:19, name:"サウナ",              duration:120, category:"余暇" },
+  { id:20, name:"温泉",                duration:180, category:"余暇" },
+  { id:21, name:"ゲーム",              duration:120, category:"余暇" },
+];
+
+const DEF_TMPLS = {
+  "デフォルト": [
+    { name:"朝の準備",            duration:30,  category:"習慣" },
+    { name:"朝散歩・朝カフェ・読書", duration:120, category:"習慣" },
+    { name:"運動",                duration:30,  category:"習慣" },
+    { name:"練習系（日替わり）",    duration:60,  category:"練習" },
+    { name:"昼ご飯・休憩",         duration:60,  category:"生活" },
+    { name:"Astraia制作",         duration:150, category:"制作" },
+    { name:"休憩",                duration:30,  category:"余白" },
+    { name:"勉強系（日替わり）",    duration:90,  category:"勉強" },
+    { name:"自由時間・散歩など",    duration:90,  category:"余白" },
+    { name:"夕ご飯",              duration:60,  category:"生活" },
+    { name:"読書・ゆるい時間",      duration:60,  category:"習慣" },
+    { name:"風呂・就寝準備",       duration:60,  category:"生活" },
+  ],
+};
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+
+let library          = [];
+let schedule         = [];
+let templates        = {};
+let customCategories = [];
+let historyData      = {};
+let editingId  = null;
+let dragFrom   = null;
+let dragLibId  = null;
+let nextId     = 200;
+
+function allCats() { return customCategories; }
+
+// ── STORAGE ───────────────────────────────────────────────────────────────────
+
+function save() {
+  localStorage.setItem('dp_lib',   JSON.stringify(library));
+  localStorage.setItem('dp_sched', JSON.stringify(schedule));
+  localStorage.setItem('dp_tmpls', JSON.stringify(templates));
+  localStorage.setItem('dp_cats',  JSON.stringify(customCategories));
+}
+
+function loadState() {
+  library          = JSON.parse(localStorage.getItem('dp_lib')     || 'null') || DEF_LIB.map(a=>({...a}));
+  schedule         = JSON.parse(localStorage.getItem('dp_sched')   || '[]');
+  templates        = JSON.parse(localStorage.getItem('dp_tmpls')   || 'null') || JSON.parse(JSON.stringify(DEF_TMPLS));
+  historyData      = JSON.parse(localStorage.getItem('dp_history') || '{}');
+  const savedCats = JSON.parse(localStorage.getItem('dp_cats') || 'null');
+  customCategories = (savedCats && savedCats.length > 0) ? savedCats : [...DEFAULT_CATS];
+  nextId    = Math.max(...library.map(a => a.id), 199) + 1;
+  const d = localStorage.getItem('dp_date'), t = localStorage.getItem('dp_time');
+  if (d) document.getElementById('dateInput').value = d;
+  if (t) document.getElementById('startTime').value = t;
+}
+
+document.getElementById('dateInput').addEventListener('input', e => localStorage.setItem('dp_date', e.target.value));
+document.getElementById('startTime').addEventListener('input', e => localStorage.setItem('dp_time', e.target.value));
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+
+const fmt = min => `${Math.floor(min/60)}:${String(min%60).padStart(2,'0')}`;
+
+function getBase() {
+  const [h,m] = document.getElementById('startTime').value.split(':').map(Number);
+  return h*60 + m;
+}
+
+function toast(msg = 'コピーしました！') {
+  const el = document.getElementById('toastEl');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+// ── MOBILE TAB SWITCH ─────────────────────────────────────────────────────────
+
+function switchTab(t) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + t).classList.add('active');
+  document.getElementById('nav-' + t).classList.add('active');
+}
+
+// ── CATEGORIES ────────────────────────────────────────────────────────────────
+
+function renderCatSelects() {
+  const opts = allCats().map(c => `<option>${c}</option>`).join('');
+  ['cCat','cCatM','newCat','newCatM','eCat'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = opts;
+    if ([...el.options].some(o => o.value === cur)) el.value = cur;
+  });
+  renderCustomCatTags();
+}
+
+function renderCustomCatTags() {
+  const html = customCategories.map(c =>
+    `<span class="cat-tag" data-cat="${c}">
+      <span class="cat-tag-name">${c}</span>
+      <button onclick="startEditCategory('${c}', this.closest('.cat-tag'))" title="編集">✎</button>
+      <button onclick="deleteCategory('${c}')" title="削除">✕</button>
+    </span>`
+  ).join('');
+  ['customCatTags','customCatTagsM'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function startEditCategory(name, tagEl) {
+  if (!tagEl) return;
+  tagEl.innerHTML = `
+    <input class="cat-tag-input" value="${name}"
+      onkeydown="if(event.key==='Enter')confirmEditCategory('${name}',this.closest('.cat-tag'));if(event.key==='Escape')renderCustomCatTags()">
+    <button onclick="confirmEditCategory('${name}',this.closest('.cat-tag'))" title="確定">✓</button>
+    <button onclick="renderCustomCatTags()" title="キャンセル">✕</button>
+  `;
+  tagEl.querySelector('input').focus();
+}
+
+function confirmEditCategory(oldName, tagEl) {
+  const input = tagEl && tagEl.querySelector('input');
+  if (!input) return;
+  const newName = input.value.trim();
+  if (!newName || (newName !== oldName && allCats().includes(newName))) {
+    renderCustomCatTags(); return;
+  }
+  if (newName === oldName) { renderCustomCatTags(); return; }
+  customCategories = customCategories.map(c => c === oldName ? newName : c);
+  library.forEach(a => { if (a.category === oldName) a.category = newName; });
+  save(); renderCatSelects(); renderAllLib();
+}
+
+function addCategory(inputId) {
+  const input = document.getElementById(inputId);
+  const name  = input.value.trim();
+  if (!name || allCats().includes(name)) { input.value = ''; return; }
+  customCategories.push(name);
+  input.value = '';
+  save(); renderCatSelects();
+}
+
+function deleteCategory(name) {
+  customCategories = customCategories.filter(c => c !== name);
+  save(); renderCatSelects();
+}
+
+// ── LIBRARY ───────────────────────────────────────────────────────────────────
+
+function renderLib(bodyId) {
+  const body = document.getElementById(bodyId);
+  if (!body) return;
+  const cats = [...new Set([...allCats(), ...library.map(a=>a.category)])];
+  body.innerHTML = '';
+  cats.forEach(cat => {
+    const items = library.filter(a => a.category === cat);
+    if (!items.length) return;
+
+    const section = document.createElement('div');
+    section.className = 'cat-section';
+    section.dataset.cat = cat;
+
+    section.addEventListener('dragover', e => {
+      if (dragLibId === null) return;
+      e.preventDefault();
+      document.querySelectorAll('.cat-section').forEach(s => s.classList.remove('drag-target'));
+      section.classList.add('drag-target');
+    });
+    section.addEventListener('dragleave', () => section.classList.remove('drag-target'));
+    section.addEventListener('drop', e => {
+      e.preventDefault();
+      section.classList.remove('drag-target');
+      if (dragLibId === null) return;
+      const item = library.find(a => a.id === dragLibId);
+      if (item && item.category !== cat) { item.category = cat; save(); renderAllLib(); }
+      dragLibId = null;
+    });
+
+    const cc = getCatColor(cat);
+    section.insertAdjacentHTML('beforeend', `<div class="cat-label" style="background:${cc.bg};color:${cc.color};border-left-color:${cc.color}">${cat}</div>`);
+
+    items.forEach(item => {
+      const d = document.createElement('div');
+      d.className = 'lib-item';
+      d.draggable = true;
+      d.innerHTML = `
+        <button class="lib-add" onclick="addToSched(${item.id})">
+          <span class="ln">${item.name}</span><span class="ld">${item.duration}分</span>
+        </button>
+        <button class="iBtn" onclick="openEditLib(${item.id})" title="編集">✎</button>
+        <button class="iBtn d" onclick="delLib(${item.id})" title="削除">✕</button>
+      `;
+      d.addEventListener('dragstart', () => { dragLibId = item.id; setTimeout(() => d.style.opacity = '0.4', 0); });
+      d.addEventListener('dragend',   () => { d.style.opacity = '1'; dragLibId = null; });
+      section.appendChild(d);
+    });
+
+    body.appendChild(section);
+  });
+}
+
+function renderAllLib() {
+  renderLib('libBody');
+  renderLib('libBodyM');
+}
+
+function addToSched(id) {
+  const a = library.find(x => x.id === id);
+  if (a) { schedule.push({name:a.name, duration:a.duration, category:a.category}); save(); renderAll(); }
+}
+
+function addCustom(catId, durId, nameId) {
+  const name = document.getElementById(nameId).value.trim();
+  const dur  = parseInt(document.getElementById(durId).value);
+  const cat  = document.getElementById(catId).value;
+  if (!name) { toast('活動名を入力してください'); return; }
+  if (!dur || dur < 1) { toast('所要時間を入力してください'); return; }
+  library.push({id: nextId++, name, duration: dur, category: cat});
+  document.getElementById(nameId).value = '';
+  document.getElementById(durId).value  = '';
+  save(); renderAllLib();
+}
+
+function openEditLib(id) {
+  const a = library.find(x => x.id === id);
+  if (!a) return;
+  editingId = id;
+  document.getElementById('eName').value = a.name;
+  document.getElementById('eDur').value  = a.duration;
+  document.getElementById('eCat').value  = a.category;
+  document.getElementById('editDlg').showModal();
+}
+
+function saveLibEdit() {
+  const a = library.find(x => x.id === editingId);
+  if (!a) return;
+  a.name     = document.getElementById('eName').value.trim() || a.name;
+  a.duration = parseInt(document.getElementById('eDur').value) || a.duration;
+  a.category = document.getElementById('eCat').value;
+  document.getElementById('editDlg').close();
+  save(); renderAllLib(); renderAll();
+}
+
+function delLib(id) {
+  if (!confirm('ライブラリから削除しますか？')) return;
+  library = library.filter(a => a.id !== id);
+  save(); renderAllLib();
+}
+
+// ── SCHEDULE ──────────────────────────────────────────────────────────────────
+
+function render(tbodyId) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+  const isMobile = tbodyId === 'schedBodyM';
+  const colCount = isMobile ? 5 : 7;
+  if (!schedule.length) {
+    const msg = isMobile
+      ? 'ライブラリタブから活動を追加してください'
+      : '← 左のライブラリから活動を追加してください';
+    tbody.innerHTML = `<tr><td colspan="${colCount}"><div class="empty">${msg}</div></td></tr>`;
+    updateStat(0); return;
+  }
+  let cur = getBase(), total = 0;
+  tbody.innerHTML = '';
+  schedule.forEach((item, i) => {
+    const s = fmt(cur); cur += item.duration; total += item.duration; const e = fmt(cur);
+    const tr = document.createElement('tr');
+    tr.className = 'srow';
+    if (!isMobile) tr.draggable = true;
+    if (isMobile) {
+      tr.innerHTML = `
+        <td class="cat-col"><span class="badge" style="background:${getCatColor(item.category).bg};color:${getCatColor(item.category).color}">${item.category}</span></td>
+        <td class="cat-col dc"><input class="dur-in" type="number" value="${item.duration}" min="5" step="5"
+          onchange="chgDur(${i},this.value)" onclick="this.select()"></td>
+        <td class="tc">${s} - ${e}</td>
+        <td>${item.name}</td>
+        <td><button class="dBtn" onclick="delSched(${i})">✕</button></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td><span class="hnd">⠿</span></td>
+        <td class="cat-col"><span class="badge" style="background:${getCatColor(item.category).bg};color:${getCatColor(item.category).color}">${item.category}</span></td>
+        <td class="cat-col dc"><input class="dur-in" type="number" value="${item.duration}" min="5" step="5"
+          onchange="chgDur(${i},this.value)" onclick="this.select()"></td>
+        <td class="tc">${s} - ${e}</td>
+        <td>${item.name}</td>
+        <td><textarea class="memo-in" placeholder="メモ" rows="1"
+          onchange="chgMemo(${i},this.value)"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+          >${item.memo || ''}</textarea></td>
+        <td>
+          <button class="lBtn" onclick="addSchedToLib(${i})" title="ライブラリに追加">＋</button>
+          <button class="dBtn" onclick="delSched(${i})">✕</button>
+        </td>
+      `;
+      tr.addEventListener('contextmenu', e => { e.preventDefault(); showCtxMenu(e, i, tbodyId); });
+      tr.addEventListener('dragstart', () => { dragFrom = i; setTimeout(() => tr.classList.add('dragging'), 0); });
+      tr.addEventListener('dragend',   () => tr.classList.remove('dragging'));
+      tr.addEventListener('dragover',  e => { e.preventDefault(); document.querySelectorAll('#schedBody .srow').forEach(r=>r.classList.remove('drag-over')); tr.classList.add('drag-over'); });
+      tr.addEventListener('drop', e => {
+        e.preventDefault(); tr.classList.remove('drag-over');
+        if (dragFrom !== null && dragFrom !== i) {
+          const [m] = schedule.splice(dragFrom, 1); schedule.splice(i, 0, m);
+          save(); renderAll();
+        }
+      });
+    }
+    tbody.appendChild(tr);
+  });
+  updateStat(total);
+}
+
+function renderAll() {
+  render('schedBody');
+  render('schedBodyM');
+}
+
+function updateStat(total) {
+  const end = getBase() + total;
+  const h = Math.floor(total/60), m = total%60;
+  document.getElementById('stat').innerHTML =
+    `終了 <span>${fmt(end)}</span>（合計 <span>${m ? h+'h'+m+'m' : h+'h'}</span>）`;
+}
+
+function chgDur(i, val) {
+  const v = parseInt(val);
+  if (v > 0) { schedule[i].duration = v; save(); renderAll(); }
+}
+
+function chgMemo(i, val) {
+  schedule[i].memo = val;
+  save();
+}
+
+// ── CONTEXT MENU ──────────────────────────────────────────────────────────────
+
+let _ctxIdx   = null;
+let _ctxTbody = 'schedBody';
+const _ctxEl  = document.getElementById('ctxMenu');
+
+function showCtxMenu(e, i, tbodyId) {
+  _ctxIdx   = i;
+  _ctxTbody = tbodyId || 'schedBody';
+  _ctxEl.style.display = 'block';
+  const x = Math.min(e.clientX, window.innerWidth  - _ctxEl.offsetWidth  - 8);
+  const y = Math.min(e.clientY, window.innerHeight - _ctxEl.offsetHeight - 8);
+  _ctxEl.style.left = x + 'px';
+  _ctxEl.style.top  = y + 'px';
+}
+
+function hideCtxMenu() { _ctxEl.style.display = 'none'; _ctxIdx = null; }
+
+document.addEventListener('click',       hideCtxMenu);
+document.addEventListener('contextmenu', e => { if (!e.target.closest('.srow')) hideCtxMenu(); });
+document.addEventListener('keydown',     e => { if (e.key === 'Escape') hideCtxMenu(); });
+
+function ctxAddToLib() {
+  if (_ctxIdx === null) return;
+  addSchedToLib(_ctxIdx);
+  hideCtxMenu();
+}
+
+function ctxDelete() {
+  if (_ctxIdx === null) return;
+  delSched(_ctxIdx);
+  hideCtxMenu();
+}
+
+function ctxEdit() {
+  if (_ctxIdx === null) return;
+  const i = _ctxIdx;
+  const tbodyId = _ctxTbody;
+  hideCtxMenu();
+  const rows = document.querySelectorAll('#' + tbodyId + ' .srow');
+  const nameCell = rows[i]?.cells[tbodyId === 'schedBodyM' ? 3 : 4];
+  if (!nameCell) return;
+  const orig = schedule[i].name;
+  nameCell.innerHTML = `<input class="name-edit-in" value="${orig}">`;
+  const inp = nameCell.querySelector('input');
+  inp.focus(); inp.select();
+  const commit = () => {
+    const v = inp.value.trim();
+    if (v) { schedule[i].name = v; save(); }
+    renderAll();
+  };
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter')  { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') renderAll();
+  });
+  inp.addEventListener('blur', commit);
+}
+
+function delSched(i) { schedule.splice(i,1); save(); renderAll(); }
+
+function addSchedToLib(i) {
+  const item = schedule[i];
+  const exists = library.some(a => a.name === item.name && a.duration === item.duration);
+  if (exists) { toast('すでにライブラリに存在します'); return; }
+  library.push({ id: nextId++, name: item.name, duration: item.duration, category: item.category });
+  save(); renderAllLib(); toast(`「${item.name}」をライブラリに追加しました`);
+}
+
+function addDirectRow() {
+  const name = document.getElementById('newName').value.trim();
+  const dur  = parseInt(document.getElementById('newDur').value);
+  const cat  = document.getElementById('newCat').value;
+  if (!name || !dur || dur < 1) return;
+  const memo = document.getElementById('newMemo').value.trim();
+  schedule.push({ name, duration: dur, category: cat, memo });
+  document.getElementById('newName').value = '';
+  document.getElementById('newDur').value  = '';
+  document.getElementById('newMemo').value = '';
+  save(); renderAll();
+  document.getElementById('newName').focus();
+}
+
+function clearSched() {
+  if (!schedule.length || confirm('スケジュールをクリアしますか？')) { schedule=[]; save(); renderAll(); }
+}
+
+// ── TEMPLATES ─────────────────────────────────────────────────────────────────
+
+function renderTmplSel() {
+  const html = Object.keys(templates).map(k=>`<option value="${k}">${k}</option>`).join('');
+  ['tmplSel','tmplSelM'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+function loadTmpl() {
+  const name = document.getElementById('tmplSel').value;
+  if (!templates[name]) return;
+  if (schedule.length && !confirm(`「${name}」を読み込みます。現在のスケジュールは消えます。`)) return;
+  schedule = templates[name].map(i=>({...i}));
+  save(); renderAll();
+}
+
+function loadTmplM() {
+  const name = document.getElementById('tmplSelM').value;
+  if (!templates[name]) return;
+  if (schedule.length && !confirm(`「${name}」を読み込みます。現在のスケジュールは消えます。`)) return;
+  schedule = templates[name].map(i=>({...i}));
+  save(); renderAll();
+}
+
+function openSaveDlg() {
+  document.getElementById('tName').value = '';
+  document.getElementById('saveDlg').showModal();
+}
+
+function saveTmpl() {
+  const name = document.getElementById('tName').value.trim();
+  if (!name) return;
+  templates[name] = schedule.map(i=>({...i}));
+  document.getElementById('saveDlg').close();
+  save(); renderTmplSel(); toast(`「${name}」を保存しました`);
+}
+
+// ── HISTORY ───────────────────────────────────────────────────────────────────
+
+function saveToHistory() {
+  const date = document.getElementById('dateInput').value;
+  if (!date) { toast('日付を入力してください'); return; }
+  if (!schedule.length) { toast('スケジュールが空です'); return; }
+  historyData[date] = schedule.map(i=>({...i}));
+  localStorage.setItem('dp_history', JSON.stringify(historyData));
+  renderHistorySel(); toast(`${date} を保存しました`);
+}
+
+function loadFromHistory() {
+  const date = document.getElementById('historySel').value;
+  if (!historyData[date]) return;
+  if (schedule.length && !confirm(`${date} を読み込みます。現在のスケジュールは消えます。`)) return;
+  schedule = historyData[date].map(i=>({...i}));
+  document.getElementById('dateInput').value = date;
+  localStorage.setItem('dp_date', date);
+  save(); renderAll();
+}
+
+function loadFromHistoryM() {
+  const date = document.getElementById('historySelM').value;
+  if (!historyData[date]) return;
+  if (schedule.length && !confirm(`${date} を読み込みます。現在のスケジュールは消えます。`)) return;
+  schedule = historyData[date].map(i=>({...i}));
+  document.getElementById('dateInput').value = date;
+  localStorage.setItem('dp_date', date);
+  save(); renderAll(); switchTab('today');
+}
+
+function deleteFromHistory() {
+  const date = document.getElementById('historySel').value;
+  if (!date || !historyData[date]) return;
+  if (!confirm(`${date} の履歴を削除しますか？`)) return;
+  delete historyData[date];
+  localStorage.setItem('dp_history', JSON.stringify(historyData));
+  renderHistorySel(); toast(`${date} を削除しました`);
+}
+
+function deleteFromHistoryM() {
+  const date = document.getElementById('historySelM').value;
+  if (!date || !historyData[date]) return;
+  if (!confirm(`${date} の履歴を削除しますか？`)) return;
+  delete historyData[date];
+  localStorage.setItem('dp_history', JSON.stringify(historyData));
+  renderHistorySel(); toast(`${date} を削除しました`);
+}
+
+function renderHistorySel() {
+  const dates = Object.keys(historyData).sort().reverse();
+  const html = dates.length
+    ? dates.map(d=>`<option value="${d}">${d}</option>`).join('')
+    : '<option disabled value="">保存なし</option>';
+  ['historySel','historySelM'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = html;
+  });
+}
+
+// ── EXPORT ────────────────────────────────────────────────────────────────────
+
+function buildMd(title) {
+  const date = document.getElementById('dateInput').value || new Date().toISOString().slice(0,10);
+  let cur = getBase();
+  let md = `---\ncreated: ${date}\ntags:\n  - デイプラン\n---\n\n# ${title}\n\n| 時間 | 活動内容 | カテゴリ | メモ |\n|------|------|----------|------|\n`;
+  schedule.forEach(item => {
+    const s = fmt(cur); cur += item.duration; const e = fmt(cur);
+    md += `| ${s} - ${e} | ${item.name} | ${item.category} | ${item.memo || ''} |\n`;
+  });
+  return md;
+}
+
+function sendToObsidian() {
+  if (!schedule.length) return;
+  const date  = document.getElementById('dateInput').value || new Date().toISOString().slice(0,10);
+  const title = `Dayplan - ${date}`;
+  const file  = `01_note/DayPlan/${title}`;
+  const md    = buildMd(title);
+  const uri   = `obsidian://new?vault=daigoro&file=${encodeURIComponent(file)}&content=${encodeURIComponent(md)}`;
+  window.location.href = uri;
+}
+
+function copyMd() {
+  if (!schedule.length) return;
+  const date = document.getElementById('dateInput').value;
+  const title = date ? `# ${date} のプラン\n\n` : '';
+  let cur = getBase();
+  let md = `${title}| 時間 | 活動内容 | カテゴリ | メモ |\n|------|------|----------|------|\n`;
+  schedule.forEach(item => {
+    const s = fmt(cur); cur += item.duration; const e = fmt(cur);
+    md += `| ${s} - ${e} | ${item.name} | ${item.category} | ${item.memo || ''} |\n`;
+  });
+  navigator.clipboard.writeText(md).then(() => toast());
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+loadState();
+renderCatSelects();
+renderAllLib();
+renderTmplSel();
+renderHistorySel();
+renderAll();
+</script>
+</body>
+</html>
