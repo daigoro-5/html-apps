@@ -395,6 +395,13 @@
           <button class="btn btn-g btn-sm" onclick="loadTmplM()" style="width:100%">読込</button>
         </div>
       </div>
+      <div class="mob-section">
+        <div class="mob-section-title">データ共有</div>
+        <div style="display:flex;gap:5px">
+          <button class="btn btn-g btn-sm" onclick="exportData()" style="flex:1">エクスポート</button>
+          <label class="btn btn-g btn-sm" style="flex:1;cursor:pointer;text-align:center">インポート<input type="file" id="importFileM" accept=".json" onchange="importData(this)" style="display:none"></label>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -405,6 +412,8 @@
   <button class="btn btn-g" onclick="clearSched()">クリア</button>
   <button class="btn btn-g" onclick="openSaveDlg()">テンプレートとして保存</button>
   <button class="btn btn-g" onclick="copyMd()">Markdownをコピー</button>
+  <button class="btn btn-g" onclick="exportData()">エクスポート</button>
+  <label class="btn btn-g" style="cursor:pointer">インポート<input type="file" id="importFile" accept=".json" onchange="importData(this)" style="display:none"></label>
   <button class="btn btn-p" onclick="sendToObsidian()">Obsidianに送る</button>
 </footer>
 
@@ -1064,6 +1073,53 @@ function copyMd() {
     md += `| ${s} - ${e} | ${item.name} | ${item.category} | ${item.memo || ''} |\n`;
   });
   navigator.clipboard.writeText(md).then(() => toast());
+}
+
+// ── EXPORT / IMPORT ───────────────────────────────────────────────────────────
+
+function exportData() {
+  const data = {
+    dp_lib:     localStorage.getItem('dp_lib'),
+    dp_sched:   localStorage.getItem('dp_sched'),
+    dp_tmpls:   localStorage.getItem('dp_tmpls'),
+    dp_history: localStorage.getItem('dp_history'),
+    dp_cats:    localStorage.getItem('dp_cats'),
+    dp_date:    localStorage.getItem('dp_date'),
+    dp_time:    localStorage.getItem('dp_time'),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `dayplanner-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('エクスポートしました');
+}
+
+function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      const keys = ['dp_lib','dp_sched','dp_tmpls','dp_history','dp_cats','dp_date','dp_time'];
+      keys.forEach(k => { if (data[k] != null) localStorage.setItem(k, data[k]); });
+      loadState();
+      renderCatSelects();
+      renderAllLib();
+      renderTmplSel();
+      renderHistorySel();
+      renderAll();
+      toast('インポートしました');
+    } catch {
+      toast('ファイルが正しくありません');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
 }
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
